@@ -51,3 +51,8 @@ def update(Ticker):
 show(p,notebook_handle=True)
 
 interact(update,Ticker=[x for x in data2['ticker'].unique()])
+
+from bokeh.embed import components 
+
+script, div = components(p)
+return render_template('graph.html', script=script, div=div)
