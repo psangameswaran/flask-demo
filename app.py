@@ -1,44 +1,64 @@
-from flask import Flask
+from flask import Flask, render_template, request
+import pandas as pd
+from bokeh.charts import Histogram
+from bokeh.embed import components
+import quandl
+import simplejson as json
+from ipywidgets import interact
+import numpy as np
+from bokeh.io import push_notebook, show, output_file,output_notebook,reset_output,save
+from bokeh.plotting import figure
+from bokeh.layouts import widgetbox
+from bokeh.models.widgets import TextInput, Dropdown
+import datetime as dt
+from bokeh.models import DatetimeTickFormatter
+
+
 app = Flask(__name__)
 
-import pandas as pd
-import numpy as np
-import bokeh.charts as bc
-from bokeh.resources import CDN
-from bokeh.embed import components
+# Load the Stock Data Set
+quandl.ApiConfig.api_key = 'J3DvHz2kKB97tvnzutbs'
+predata = quandl.get_table('WIKI/PRICES', date = { 'gte': '2017-06-13' })
+stock_names = [x for x in predata['ticker'].unique()]
 
-@app.route("/")
-def visualisation():
- # Build the dataframe
- df = pd.DataFrame({
- 'x': 2*np.pi*i/100,
- 'sin': np.sin(2*np.pi*i/100),
- 'cos': np.cos(2*np.pi*i/100),
- } for i in range(0,101))
+# Create the main plot
+def create_figure(stock):
+        data = quandl.get_table('WIKI/PRICES', ticker=stock, date = { 'gte': '2017-05-15' })
+        data['date'] = data['date'].astype('datetime64[ns]')
+        today = dt.date.today()
+        monthago=today - pd.offsets.Day(29)
+        data2=data[data['date']>monthago]
+        x=data2['date'].dt.date
+        y=data2['close']
+        p = figure(title="Stock Ticker Price", plot_height=300, plot_width=600)
+        r = p.line(x, y, color="#2222aa", line_width=3)
+        p.xaxis.formatter=DatetimeTickFormatter(days=["%m/%d"])
 
- # Create the plot
- plot = bc.Line(title='Triganometric fun!',
- data=df, x='x', ylabel='y')
+        # Set the x axis label
+        p.xaxis.axis_label = "Date"
 
- # Generate the script and HTML for the plot
- script, div = components(plot)
+        # Set the y axis label
+        p.yaxis.axis_label = 'Closing Price'
+        return p
 
- # Return the webpage
- return """
-<!doctype html>
-<head>
- <title>My wonderful trigonometric webpage</title>
- {bokeh_css}
-</head>
-<body>
- <h1>Everyone loves trig!
- {div}
+# Index page
+@app.route('/')
+def index():
+        # Determine the selected feature
+        current_stock_name = request.args.get("s")
+        if current_stock_name == None:
+                current_stock_name = "A"
 
- {bokeh_js}
- {script}
-</body>
- """.format(script=script, div=div, bokeh_css=CDN.render_css(),
- bokeh_js=CDN.render_js())
+        # Create the plot
+        plot = create_figure(current_stock_name)
 
-if __name__ == "__main__":
- app.run(host='0.0.0.0', port=80)
+        # Embed plot into HTML via Flask Render
+        script, div = components(plot)
+        return render_template("index.html", script=script, div=div,
+                stock_names=stock_names,  current_stock_name=current_stock_name)
+
+# With debug=True, Flask server will auto-reload 
+# when there are code changes
+if __name__ == '__main__':
+        app.run()
+   
