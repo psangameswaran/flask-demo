@@ -2,9 +2,8 @@ from flask import Flask, render_template, request
 import pandas as pd
 from bokeh.charts import Histogram
 from bokeh.embed import components
-import quandl
+import requests
 import simplejson as json
-from ipywidgets import interact
 import numpy as np
 from bokeh.io import push_notebook, show, output_file,output_notebook,reset_output,save
 from bokeh.plotting import figure
@@ -17,13 +16,22 @@ from bokeh.models import DatetimeTickFormatter
 app = Flask(__name__)
 
 # Load the Stock Data Set
-quandl.ApiConfig.api_key = 'J3DvHz2kKB97tvnzutbs'
-predata = quandl.get_table('WIKI/PRICES', date = { 'gte': '2017-06-13' })
+#quandl.ApiConfig.api_key = 'J3DvHz2kKB97tvnzutbs'
+r = requests.get('https://www.quandl.com/api/v3/datatables/WIKI/PRICES.json?api_key=J3DvHz2kKB97tvnzutbs&date.gte=2017-06-13')
+prepredata = r.json()
+cols = ["ticker", "date", "open", "high", "low", "close", "volume", "ex-dividend", "split_ratio", "adj_open", "adj_high", "adj_low$
+
+predata=pd.DataFrame(prepredata['datatable']['data'], columns = cols)
+#predata = quandl.get_table('WIKI/PRICES', date = { 'gte': '2017-06-13' })
 stock_names = [x for x in predata['ticker'].unique()]
 
 # Create the main plot
 def create_figure(stock):
-        data = quandl.get_table('WIKI/PRICES', ticker=stock, date = { 'gte': '2017-05-15' })
+        query = "%s%s" %("https://www.quandl.com/api/v3/datatables/WIKI/PRICES.json?api_key=J3DvHz2kKB97tvnzutbs&date.gte=2017-05-$
+        r = requests.get(query)
+        prepdata=r.json()
+        data=pd.DataFrame(prepdata['datatable']['data'],columns=cols)
+        #data = quandl.get_table('WIKI/PRICES', ticker=stock, date = { 'gte': '2017-05-15' })
         data['date'] = data['date'].astype('datetime64[ns]')
         today = dt.date.today()
         monthago=today - pd.offsets.Day(29)
@@ -60,5 +68,5 @@ def index():
 # With debug=True, Flask server will auto-reload 
 # when there are code changes
 if __name__ == '__main__':
-        app.run()
-   
+        app.run(host='0.0.0.0')                         
+       
